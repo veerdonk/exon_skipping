@@ -334,9 +334,20 @@ unique_ids <- unique(counts_with_ids$gene)
 exon_counts <- count(counts_with_ids$gene)
 number_of_junctions <- data.frame()
 
-for(i in 1:length(exon_counts$x)){
+
+for(i in 1:10){#length(exon_counts$x)){
+  if(i %% 100 == 0){
+    print(i)
+  }
   number_of_junctions = rbind(number_of_junctions, length(counts_with_ids[counts_with_ids$gene == exon_counts$x[i],1])/length(exons_in_recount[exons_in_recount$group_name == exon_counts$x[i],1]))
 }
+
+
+junctions_per_exon_of_gene <- sapply(exon_counts$x, function(x) length(counts_with_ids[counts_with_ids$gene == x,1])/length(exons_in_recount[exons_in_recount$group_name == x,1]))
+write.csv(junctions_per_exon_of_gene, "~/Documents/data/junctions_per_exon.csv")
+jxpeog <- read.csv("~/Documents/data/junctions_per_exon.csv")
+#data.frame(exon_counts$x, #length(counts_with_ids[counts_with_ids$gene == x,1])))
+#data.frame(unique_ids,     sapply(unique_ids, function(x) length(counts_with_ids[counts_with_ids$gene == x,1])/(genes_in_recount[genes_in_recount$gene_id == x,7]/1000)))
 
 for(i in 1:10){#length(unique_ids)){
   print(i)
@@ -347,6 +358,6 @@ for(i in 1:10){#length(unique_ids)){
 junction_per_kilobase_of_gene <- data.frame(unique_ids, sapply(unique_ids, function(x) length(counts_with_ids[counts_with_ids$gene == x,1])/(genes_in_recount[genes_in_recount$gene_id == x,7]/1000)))
 #write.csv(junction_per_kilobase_of_gene, file="~/Documents/data/junctions_per_kilobase.csv")
 jpkog <- read.csv("~/Documents/data/junctions_per_kilobase.csv")
-boxplot(jpkog$read_count, main = "junction reads per kilobase", ylab = "reads")
-abline(h=jpkog[jpkog$id == col7_id,3], col="red")
+boxplot(jxpeog$x, main = "junction reads per exon", ylab = "reads")
+abline(h=jxpeog[jxpeog$id == col7_id,3], col="red")
 

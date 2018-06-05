@@ -27,6 +27,7 @@ col7_exon_annotation <- function(exons_bed){
   # split the 'info' column to get the ucsc ids and select the exons for COL7A1
   exon_bed$ucsc_id <- unlist(lapply(exon_bed$info, function(x) strsplit(x, "_")[[1]][1]))
   col7_exons <- exon_bed[exon_bed$ucsc_id == ucsc_col7_id,]
+  rm(exon_bed)
   row.names(col7_exons) <- 1:nrow(col7_exons)
   return(col7_exons)
 }
@@ -36,13 +37,19 @@ col7_exon_annotation <- function(exons_bed){
 download_study_jx <- function(study){
   if(!file.exists(file.path(study, "rse_jx.Rdata"))){
     download_study(study, type = "rse-jx")
+    print("rse downloaded..")
+  }
+  if(file.info(file.path(study, "rse_jx.Rdata"))$size > 61759786){
+    stop("file too large")
   }
   ## check and load data
   if(file.exists(file.path(study, "rse_jx.Rdata"))){
     load(file.path(study, "rse_jx.Rdata"))
-  }
-  file.remove(file.path(study, "rse_jx.Rdata"))
-  file.remove(file.path(study))
+    print("rse loaded..")
+    file.remove(file.path(study, "rse_jx.Rdata"))
+    file.remove(file.path(study))
+    }
+  
   return(rse_jx)
 }
 
@@ -69,19 +76,26 @@ download_jx_bed <- function(study){
 prepare_recount_study <- function(rse_jx){
   # scale the rse by the number of mapped reads
   rse <- scale_counts(rse_jx, by = 'mapped_reads', round = FALSE) #create a scaled rse
+  rm(rse_jx)
   junction_counts <- assays(rse)$counts #retrieve counts table
   single_id <- lapply(rowData(rse)$gene_id_proposed, function(x) x[1]) # select first annotated ID for each junction
   annotatedRows <- which(!is.na(unlist(single_id))) # select rows annotated with an ID
   annotated_junctions <- junction_counts[annotatedRows,] # select annotated rows from count table
+  rm(junction_counts)
   counts_with_ids <- cbind.data.frame(annotated_junctions, unlist(single_id[annotatedRows])) # add ID to table
   annotated_jx_ids <- rowData(rse)$junction_id[annotatedRows] # find the junction ids with annotated gene ids
+  rm(rse)
+  gc()
   counts_with_ids <- cbind.data.frame(counts_with_ids, annotated_jx_ids) # add junction ids to counts table
   colnames(counts_with_ids) <- c(colnames(counts_with_ids)[1:(ncol(counts_with_ids)-2)], "gene", "junction_id") # assign column names
 
   #extract the junctions mapping to col7 exons
   col7_jx <- as.data.frame(counts_with_ids[which(unlist(single_id[annotatedRows]) == col7_id),], stringsAsFactors = F)
+  rm(counts_with_ids)
   col7_jx$junction_id <- as.numeric(levels(col7_jx$junction_id))[col7_jx$junction_id]
-
+  rm(annotated_junctions)
+  rm(single_id)
+  
   return(col7_jx)
 }
 ##------------------------------------------------------------------------------------------------------##
@@ -92,15 +106,19 @@ find_skipped_exons <- function(study, exons_bed){
   ptm <- proc.time()
   print("Downloading study..")
   rse_jx <- download_study_jx(study)
+  gc()
   print("Done.")
   print("Downloading .bed files..")
   jx_bed <- download_jx_bed(study)
+  gc()
   print("Done.")
   print("Retrieving COL7A1 exons..")
   col7_exons <- col7_exon_annotation(exons_bed)
+  gc()
   print("Done.")
   print("Preparing and scaling..")
   col7_jx <- prepare_recount_study(rse_jx)
+  gc()
   print("Done.")
   print("Searching for skipped exons..")
   
@@ -157,6 +175,7 @@ find_skipped_exons <- function(study, exons_bed){
   }
   # report the time taken to process the study
   print(paste0("Done, time taken to process study: ", round((proc.time()-ptm)[3], 2), " S"))
+  print("")
   return(count_table_skipped)
   #return(counts_per_skipped_exon)
 }
@@ -184,25 +203,43 @@ find_counts_table <- function(jx_ids, col7_jx, good_jx_ids){
 ##------------------------------------loop through cmd args and run-------------------------------------##
 # args <- "SRP065812"
 # file ~/Documents/data/skipped/skipped_exons_multifile.csv
+not_run_studies <- c("SRP025982", "SRP042161", "SRP066834", "SRP041736", "ERP001942", "SRP060416", "SRP055569", "SRP067502")
 
 time1 <- proc.time()
 studies <- all_studies[args[3]:args[4]] # what studies have to be run
 outfile <- args[1] # first argument should be desired output
 exons_bed <- args[2] # second argument should be the location of the col7 .bed file
 
+io_error <- c()
+no_col7 <- c()
 for(study in studies){
-  print(study)
-  skipped_exon_counts <- find_skipped_exons(study, exons_bed)
-  if(length(skipped_exon_counts) > 1){
-    if(!file.exists(outfile)){
-      write.table(skipped_exon_counts, file = outfile, sep = ",", col.names = TRUE)
+  if(!study %in% not_run_studies){
+    print(study)
+    skipped_exon_counts <- tryCatch(
+      {find_skipped_exons(study, exons_bed)},
+      error=function(e){
+        io_error <- c(io_error, study)
+        print(paste0(study, " produced an error.."))
+      }
+    )
+    gc() # garbage collection to free up memory 
+    if(length(skipped_exon_counts) > 1){
+      if(!file.exists(outfile)){
+        write.table(skipped_exon_counts, file = outfile, sep = ",", col.names = TRUE)
+      }
+      else{
+        write.table(skipped_exon_counts, file = outfile, sep = ",", col.names = FALSE, append = TRUE)
+      }
+    }else{
+      print("No data for COL7A1 available, stopping..")
+      no_col7 <- c(no_col7, study)
     }
-    else{
-      write.table(skipped_exon_counts, file = outfile, sep = ",", col.names = FALSE, append = TRUE)
-    }
-  }else{
-    print("No data for COL7A1 available, stopping..")
   }
 }
+print("Failed studies (IO):")
+print(paste(io_error))
+print("Failed studies (no COL7):")
+print(paste(no_col7))
 print(proc.time() - time1)
+
 ##------------------------------------------------------------------------------------------------------##
