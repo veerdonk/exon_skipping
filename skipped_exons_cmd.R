@@ -149,7 +149,7 @@ find_skipped_exons <- function(study, exons_bed){
   # loop through all junctions and check whether an exon falls completely within its start/stop
   for(i in 1:length(col7_start_stop$start)){
     for(j in 1:nrow(col7_exons)){
-      if(col7_start_stop$start[i] >= col7_exons$start[1] && as.numeric(col7_start_stop$stop[i]) <= col7_exons$stop[118]){
+      #if(col7_start_stop$start[i] >= col7_exons$start[1] && as.numeric(col7_start_stop$stop[i]) <= col7_exons$stop[118]){
         if((col7_exons$start[j] - alternative_length) > col7_start_stop$start[i] & (col7_exons$stop[j] + alternative_length) < col7_start_stop$stop[i]){
           if(exists(col7_exons$info[j], where = skipped_exons)){
             val <- skipped_exons[[col7_exons$info[j]]]
@@ -159,7 +159,7 @@ find_skipped_exons <- function(study, exons_bed){
             skipped_exons[[col7_exons$info[j]]] <- col7_start_stop$junction_id[i]
           }
         }
-      }  
+      #}  
     }
   }
   # check that junction does not 'skip' more than 10 exons (might be changed)
