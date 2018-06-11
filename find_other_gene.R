@@ -10,8 +10,10 @@ library(data.table)
 library(DESeq2)
 ##------------------------------------------------------------------------------------------------------##
 # "SRP050971" < skin study
-study <-  "SRP050971"#"DRP000366"#"SRP065812"
+study <-  "SRP067502"#"SRP065812"#"DRP000366"#
 #col7_id <- "ENSG00000114270.16"
+gene_id <- "ENSG00000185842.14"
+ucsc_id <- "uc001how.3"
 dnah14_id <- "ENSG00000185842.14"
 #18 exons ENSG00000118900.14
 #38 exons ENSG00000101605.12
@@ -19,18 +21,17 @@ dnah14_id <- "ENSG00000185842.14"
 
 all_studies <- abstract_search("",id_only = TRUE)
 ##-------------------------------------------COL7 exon data---------------------------------------------##
-col7_exon_annotation <- function(){
+gene_exon_annotation <- function(){
   # loading ucsc exon annotation for COL7A1
   exon_bed <-  read.delim("/Users/david/Documents/data/dnah14_exons.bed", header = FALSE, stringsAsFactors = FALSE)
   # ucsc id
   #ucsc_col7_id <- "uc003ctz.3"
-  ucsc_dnah14_id <- "uc001how.3"
   colnames(exon_bed) <- c("chromosome", "start", "stop", "info", "zero", "strand")#column names
   # split the 'info' column to get the ucsc ids and select the exons for COL7A1
   exon_bed$ucsc_id <- unlist(lapply(exon_bed$info, function(x) strsplit(x, "_")[[1]][1]))
-  dnah14_exons <- exon_bed[exon_bed$ucsc_id == ucsc_dnah14_id,]
-  row.names(dnah14_exons) <- 1:nrow(dnah14_exons)
-  return(dnah14_exons)
+  gene_exons <- exon_bed[exon_bed$ucsc_id == ucsc_id,]
+  row.names(gene_exons) <- 1:nrow(gene_exons)
+  return(gene_exons)
 }
 ##------------------------------------------------------------------------------------------------------##
 
@@ -98,10 +99,10 @@ prepare_recount_study <- function(rse_jx){
   
   
   #change normalized_with_id to counts_with_ids to not use TPM normalized data.
-  dnah14_jx <- as.data.frame(counts_with_ids[which(unlist(single_id[annotatedRows]) == dnah14_id),], stringsAsFactors = F)
-  dnah14_jx$junction_id <- as.numeric(levels(dnah14_jx$junction_id))[dnah14_jx$junction_id]
+  gene_jx <- as.data.frame(counts_with_ids[which(unlist(single_id[annotatedRows]) == gene_id),], stringsAsFactors = F)
+  gene_jx$junction_id <- as.numeric(levels(gene_jx$junction_id))[gene_jx$junction_id]
   
-  return(dnah14_jx)
+  return(gene_jx)
 }
 
 find_skipped_exons <- function(study){
@@ -113,16 +114,16 @@ find_skipped_exons <- function(study){
   jx_bed <- download_jx_bed(study)
   print("Done.")
   print("Retrieving COL7A1 exons..")
-  col7_exons <- col7_exon_annotation()
+  gene_exons <- gene_exon_annotation()
   print("Done.")
   print("Preparing and scaling..")
-  col7_jx <- prepare_recount_study(rse_jx)
+  gene_jx <- prepare_recount_study(rse_jx)
   print("Done.")
   print("Searching for skipped exons..")
   
   
   # retrieving all start and stop positions for col7a1
-  start_stop <- as.data.frame(t(sapply(as.integer(dnah14_jx$junction_id), function(x) jx_bed[jx_bed$id == x,1:3])))
+  start_stop <- as.data.frame(t(sapply(as.integer(gene_jx$junction_id), function(x) jx_bed[jx_bed$id == x,1:3])))
   start_stop <- as.data.frame(apply(start_stop, 2, unlist), stringsAsFactors = FALSE)
   
   if(length(start_stop) == 1){
@@ -130,23 +131,23 @@ find_skipped_exons <- function(study){
   }
   
   # binding chromosome + start/stop to col7 data frame
-  dnah14_start_stop <- cbind(dnah14_jx, start_stop)
+  gene_start_stop <- cbind(gene_jx, start_stop)
   
-  dnah14_start_stop$start <- as.numeric(dnah14_start_stop$start)
-  dnah14_start_stop$stop <- as.numeric(dnah14_start_stop$stop)
+  gene_start_stop$start <- as.numeric(gene_start_stop$start)
+  gene_start_stop$stop <- as.numeric(gene_start_stop$stop)
   print("pass")  
   alternative_length <- 1
   skipped_exons <- list()
-  for(i in 1:length(dnah14_start_stop$start)){
-    for(j in 1:nrow(dnah14_exons)){
+  for(i in 1:length(gene_start_stop$start)){
+    for(j in 1:nrow(gene_exons)){
       #if(col7_start_stop$start[i] >= col7_exons$start[1] && as.numeric(col7_start_stop$stop[i]) <= col7_exons$stop[118]){
-      if((dnah14_exons$start[j] - alternative_length) > dnah14_start_stop$start[i] & (dnah14_exons$stop[j] + alternative_length) < dnah14_start_stop$stop[i]){
-        if(exists(dnah14_exons$info[j], where = skipped_exons)){
-          val <- skipped_exons[[dnah14_exons$info[j]]]
-          skipped_exons[[dnah14_exons$info[j]]] <- c(val, dnah14_start_stop$junction_id[i])
+      if((gene_exons$start[j] - alternative_length) > gene_start_stop$start[i] & (gene_exons$stop[j] + alternative_length) < gene_start_stop$stop[i]){
+        if(exists(gene_exons$info[j], where = skipped_exons)){
+          val <- skipped_exons[[gene_exons$info[j]]]
+          skipped_exons[[gene_exons$info[j]]] <- c(val, gene_start_stop$junction_id[i])
         }
         else{
-          skipped_exons[[dnah14_exons$info[j]]] <- dnah14_start_stop$junction_id[i]
+          skipped_exons[[gene_exons$info[j]]] <- gene_start_stop$junction_id[i]
         }
       }
       #}  
@@ -159,12 +160,15 @@ find_skipped_exons <- function(study){
   # plot(sort(no_skips$freq), ylab="number of skips", xlab = "junction id (numbered)")
   
   good_jx_ids <- count(unlist(unname(skipped_exons)))[count(unlist(unname(skipped_exons)))$freq < 10,1]
+  #jx_frequency <- count(unlist(unname(skipped_exons)))
+  #freq_binned <- count(jx_frequency$freq)
+  #p2 <- ggplot(freq_binned, aes(x=x, y=freq)) + geom_bar(stat='identity') + labs(x="number of skipped exons", y="number of junctions", title="Skips in COL7A1")
   #counts_per_skipped_exon <- sapply(names(skipped_exons), function(x) find_read_counts(skipped_exons[[x]], col7_jx))
   #count_table_skipped <- as.data.frame(t(sapply(names(skipped_exons), function(x) find_counts_table(skipped_exons[[x]], col7_jx, good_jx_ids))))
   
   # transformed cpount table to accomodate more samples
   
-  count_table_skipped <- as.data.frame(sapply(dnah14_exons$info, function(x) find_counts_table(skipped_exons[[x]], dnah14_jx, good_jx_ids)))
+  count_table_skipped <- as.data.frame(sapply(gene_exons$info, function(x) find_counts_table(skipped_exons[[x]], gene_jx, good_jx_ids)))
   if(length(count_table_skipped) == 1){
     count_table_skipped <- as.data.frame(t(count_table_skipped))
     row.names(count_table_skipped) <- "sample1"
@@ -174,28 +178,28 @@ find_skipped_exons <- function(study){
   #return(counts_per_skipped_exon)
 }
 
-find_counts_table <- function(jx_ids, dnah14_jx, good_jx_ids){
+find_counts_table <- function(jx_ids, gene_jx, good_jx_ids){
   
   tempdf <- data.frame()
   for(id in jx_ids){
     if(id %in% good_jx_ids){
-      tempdf <- rbind(tempdf, dnah14_jx[col7_jx$junction_id == id,1:(ncol(dnah14_jx)-2)])
+      tempdf <- rbind(tempdf, gene_jx[col7_jx$junction_id == id,1:(ncol(gene_jx)-2)])
     }
   }
   if(length(tempdf) == 0){
     
-    tempdf <- as.data.frame(t(rep(0, (ncol(dnah14_jx)-2))))
-    colnames(tempdf) <- colnames(col7_jx)[1:(ncol(dnah14_jx)-2)]
+    tempdf <- as.data.frame(t(rep(0, (ncol(gene_jx)-2))))
+    colnames(tempdf) <- colnames(gene_jx)[1:(ncol(gene_jx)-2)]
   }
   
   return(colSums(tempdf))
 }
 
-find_read_counts <- function(jx_ids, dnah14_jx){
+find_read_counts <- function(jx_ids, gene_jx){
   
   total_jx_rowcount <- 0
   for (id in jx_ids) {
-    total_jx_rowcount <- total_jx_rowcount + rowSums(dnah14_jx[dnah14_jx$junction_id == id,1:(ncol(dnah14_jx)-2)])
+    total_jx_rowcount <- total_jx_rowcount + rowSums(gene_jx[dnah14_jx$junction_id == id,1:(ncol(gene_jx)-2)])
   }
   
   return(total_jx_rowcount)
@@ -243,3 +247,5 @@ plot_count_table <- function(skipped_exon_count_table){
   
   return(p)
 }
+
+skipped <- find_skipped_exons(study)

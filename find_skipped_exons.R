@@ -10,10 +10,11 @@ library(data.table)
 library(DESeq2)
 ##------------------------------------------------------------------------------------------------------##
 # "SRP050971" < skin study
-study <-  "SRP065812"
+study <-  "SRP050971"#"SRP065812"
 col7_id <- "ENSG00000114270.16"
 
 all_studies <- abstract_search("",id_only = TRUE)
+all_studies_desc <- abstract_search("")
 ##-------------------------------------------COL7 exon data---------------------------------------------##
 col7_exon_annotation <- function(){
   # loading ucsc exon annotation for COL7A1
@@ -195,8 +196,8 @@ find_read_counts <- function(jx_ids, col7_jx){
   
   return(total_jx_rowcount)
 }
-
 plot_preliminary <- function(skipped_exon_counts){
+
   ## TODO: make this compatible with a count table instead of rowSums
   
   
@@ -360,4 +361,15 @@ junction_per_kilobase_of_gene <- data.frame(unique_ids, sapply(unique_ids, funct
 jpkog <- read.csv("~/Documents/data/junctions_per_kilobase.csv")
 boxplot(jxpeog$x, main = "junction reads per exon", ylab = "reads")
 abline(h=jxpeog[jxpeog$id == col7_id,3], col="red")
+
+
+## get sample IDs from studies that mention skin in their abstract (rudimentary text mining)
+all_studies_desc$abstract[1]
+skin_studies <- all_studies_desc[unlist(lapply(all_studies_desc$abstract, function(x) grepl("skin", x, ignore.case = TRUE))),]
+sum(skin_studies$number_samples)
+skin_samples <- c()
+for(study in skin_studies$project){
+  rse <- download_study_jx(study)
+  skin_samples <- c(skin_samples, colData(rse)$sample)
+}
 
