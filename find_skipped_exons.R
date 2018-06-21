@@ -25,9 +25,11 @@ col7_exon_annotation <- function(){
   # split the 'info' column to get the ucsc ids and select the exons for COL7A1
   exon_bed$ucsc_id <- unlist(lapply(exon_bed$info, function(x) strsplit(x, "_")[[1]][1]))
   col7_exons <- exon_bed[exon_bed$ucsc_id == ucsc_col7_id,]
+  if(col)
+  rev(col7_exons$info)
   row.names(col7_exons) <- 1:nrow(col7_exons)
   return(col7_exons)
-}
+  }
 ##------------------------------------------------------------------------------------------------------##
 
 ##-------------------------------------download/load study----------------------------------------------##

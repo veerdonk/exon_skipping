@@ -12,8 +12,8 @@ library(data.table)
 ##------------------------------------------------------------------------------------------------------##
 
 ##-----------------------------------------Constants----------------------------------------------------##
-gene_id <- "ENSG00000198947.15" #DMD
-ucsc_gene_id <- "uc004dda.2" #DMD
+gene_id <- "ENSG00000114270.16" #COL7
+ucsc_gene_id <- "uc003ctz.3" #COL7
 all_studies <- abstract_search("",id_only = TRUE)
 ##------------------------------------------------------------------------------------------------------##
 
@@ -28,8 +28,11 @@ gene_exon_annotation <- function(exons_bed){
   # split the 'info' column to get the ucsc ids and select the exons for gene
   exon_bed$ucsc_id <- unlist(lapply(exon_bed$info, function(x) strsplit(x, "_")[[1]][1]))
   gene_exons <- exon_bed[exon_bed$ucsc_id == ucsc_gene_id,]
+  if(gene_exons$strand[1] == "-"){
+  gene_exons$info <- rev(gene_exons$info)
+  }
   rm(exon_bed)
-  row.names(gene_exons) <- 1:nrow(gene_exons)
+  #row.names(gene_exons) <- 1:nrow(gene_exons)
   return(gene_exons)
 }
 ##------------------------------------------------------------------------------------------------------##
