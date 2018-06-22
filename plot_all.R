@@ -59,12 +59,14 @@ read_and_normalize <- function(fileDir, exon_lengths, strand){
 }
 fileDirCol17 <- "/Users/david/Documents/data/cluster_output/col17"
 fileDirCol7 <- "/Users/david/Documents/data/cluster_output/col7"
+fileDirCol71ex <- "/Users/david/Documents/data/cluster_output/col7_1ex/"
 fileDirDMD <- "/Users/david/Documents/data/cluster_output/dmd"
 fileDirTTN <- "/Users/david/Documents/data/cluster_output/ttn"
 fileDirGPI <- "/Users/david/Documents/data/cluster_output/gpi"
 test <- "~/Documents/data/reverse_test/"
 all_samples_COL17 <- read_and_normalize(fileDirCol17, col17_exon_lengths)
 all_samples_COL7 <- read_and_normalize(fileDirCol7, col7_exon_lengths, col7_strand)
+all_samples_COL7_1ex <- read_and_normalize(fileDirCol71ex, col7_exon_lengths, col7_strand)
 all_samples_DMD <- read_and_normalize(fileDirDMD, dmd_exon_lengths)
 all_samples_TTN <- read_and_normalize(fileDirTTN, ttn_exon_lengths)
 all_samples_GPI <- read_and_normalize(fileDirGPI, gpi_exon_lengths)
@@ -76,20 +78,45 @@ make_bar_plot <- function(tbl, skippable_exons){
   for(i in 1:1000){
     multi_sample <- cbind(multi_sample ,colMeans(na.omit(tbl[row.names(tbl) %in% sample(row.names(tbl), round(length(row.names(tbl))/2)),])))
   }
-   
-  
   sampled_sds <- apply(multi_sample, 1, sd)
   barData <- data.frame(colMeans(na.omit(tbl)))
   colnames(barData) <- "dat"
   barData$exon <- as.numeric(row.names(barData))#factor(as.character(row.names(barData)), levels = unique(row.names(barData)))
+  barData$values <- colSums(na.omit(tbl > 0))
   if(length(skippable_exons) > 1){ 
   barData$frame <- as.factor(ifelse(barData$exon %in% skippable_exons, "in frame", "out of frame"))
   }
   else{
     barData$frame <- "unknown"
   }
-  bar <- ggplot(data=barData, aes(x=exon, y=dat, color=frame)) + geom_bar(stat = "identity", position = "dodge") + theme(axis.text=element_text(size=8)) + scale_color_manual(values=c("#5ab4ac", "#d8b365"))
-  return(bar + geom_errorbar(aes(ymin=dat-sampled_sds, ymax=dat+sampled_sds), width=.2))
+  bar <- ggplot(data=barData, aes(x=exon, y=dat, color=frame))
+  bar <- bar + geom_bar(stat = "identity", position = "dodge")
+  bar <- bar + theme(axis.text=element_text(size=8))
+  bar <- bar + scale_color_manual(values=c("#5ab4ac", "#d8b365"))
+  bar <- bar + geom_errorbar(aes(ymin=dat-sampled_sds, ymax=dat+sampled_sds), width=.2)
+  bar <- bar + geom_text(aes(label=values), size=1.5, color="black", vjust = -0.5)
+  
+  return(bar)
+}
+
+make_stacked_bar_plot <-  function(tbl, skippable_exons){
+  sums <- data.frame(colSums(na.omit(tbl)))
+  colnames(sums) <- "stacked"
+  sums$values <- colSums(na.omit(tbl > 0)) 
+  sums$exon <- as.numeric(row.names(sums))
+  if(length(skippable_exons) > 1){ 
+    sums$frame <- as.factor(ifelse(sums$exon %in% skippable_exons, "in frame", "out of frame"))
+  }
+  else{
+    sums$frame <- "unknown"
+  }
+  bar <- ggplot(data=sums, aes(x=exon, y=stacked, color=frame))
+  bar <- bar + geom_bar(stat = "identity", position = "dodge")
+  bar <- bar + theme(axis.text=element_text(size=8))
+  bar <- bar + scale_color_manual(values=c("#5ab4ac", "#d8b365"))
+  bar <- bar + geom_text(aes(label=values), size=1.5, color="black", vjust = -0.5)
+  
+  return(bar)
 }
 
 make_multi_bar_plot <- function(tbls, names){
@@ -97,7 +124,7 @@ make_multi_bar_plot <- function(tbls, names){
   for(tbl_num in 1:length(tbls)){
     tbl_dat <- data.frame(colMeans(na.omit(tbls[[tbl_num]])))
     colnames(tbl_dat) <- "means"
-    tbl_dat$exon <- 1:length(tbl_dat$means)#factor(as.character(1:length(tbl_dat$means)), levels = unique(1:length(tbl_dat$means)))
+    tbl_dat$exon <- rev(1:length(tbl_dat$means))#factor(as.character(1:length(tbl_dat$means)), levels = unique(1:length(tbl_dat$means)))
     tbl_dat$name <- names[tbl_num]
     barplot_data <- rbind(barplot_data, tbl_dat)
   }
@@ -128,9 +155,9 @@ skippable_exons_gpi <- c()
 
 ##---------------------------------specify gene to use---------------------------------------##
 
-all_samples_n <- all_samples_COL7#all_samples_GPI#all_samples_COL17#all_samples_TTN#all_samples_DMD#
+all_samples_n <- all_samples_COL7#all_samples_COL7_1ex#all_samples_GPI#all_samples_COL17#all_samples_TTN#all_samples_DMD#
 skippable_exons <-   skippable_exons_col7#skippable_exons_gpi#skippable_exons_col17#skippable_exons_ttn#skippable_exons_dmd#
-gene <- "COL7A1"#"GPI"#"COL17A1"#"TTN"#"DMD"#  
+gene <- "COL7A1 (10 skips)"#"GPI"#"COL17A1"#"TTN"#"DMD"#  
 ##--------------------------------get data for tissues---------------------------------------##
 skin_data <- all_samples_n[row.names(all_samples_n) %in% skin_studies,]
 brain_data <- all_samples_n[row.names(all_samples_n) %in% brain_studies,]
