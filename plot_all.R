@@ -54,7 +54,7 @@ read_and_normalize <- function(fileDir, exon_lengths, strand){
   }
   colnames(all_samples) <- colnms
   #correct for exon length:
-  all_samples_n <- as.data.frame(t(t(all_samples) / exon_lengths))
+  #all_samples_n <- as.data.frame(t(t(all_samples) / exon_lengths))
   return(all_samples_n)
 }
 fileDirCol17 <- "/Users/david/Documents/data/cluster_output/col17"
@@ -81,7 +81,7 @@ make_bar_plot <- function(tbl, skippable_exons){
   sampled_sds <- apply(multi_sample, 1, sd)
   barData <- data.frame(colMeans(na.omit(tbl)))
   colnames(barData) <- "dat"
-  barData$exon <- as.numeric(row.names(barData))#factor(as.character(row.names(barData)), levels = unique(row.names(barData)))
+  barData$exon <- factor(as.character(row.names(barData)), levels = unique(row.names(barData)))#as.numeric(row.names(barData))#factor(as.character(row.names(barData)), levels = unique(row.names(barData)))
   barData$values <- colSums(na.omit(tbl > 0))
   if(length(skippable_exons) > 1){ 
   barData$frame <- as.factor(ifelse(barData$exon %in% skippable_exons, "in frame", "out of frame"))
@@ -145,7 +145,7 @@ esophagus_studies <- sample_annotation[sample_annotation$annotation_organism_par
 intestine_studies <- sample_annotation[sample_annotation$annotation_organism_part == "intestine",1]
 
 ##----------------------------specify in/out of frame exons----------------------------------##
-not_skip_exons_col7 <- c(1,2,3,5,6,23,24,26,112,118) # exons that cant be skipped (1 based)
+not_skip_exons_col7 <- c(1,2,3,4,6,7,24,25,27,113,118) # exons that cant be skipped (1 based)
 skippable_exons_col7 <- (1:118)[-not_skip_exons_col7] # exons that can be skipped (1 based)
 not_skip_exons_dmd <- c(1,2,6,7,8,11,12,17,18,19,20,21,22,43,44,45,46,50,51,52,53,54,55,56,57,58,59,61,62,63,65,66,67,68,69,70,75,76,78,79)
 skippable_exons_dmd <- (1:79)[-not_skip_exons_dmd]
@@ -169,15 +169,15 @@ esophagus_data <- all_samples_n[row.names(all_samples_n) %in% esophagus_studies,
 intestine_data <- all_samples_n[row.names(all_samples_n) %in% intestine_studies,]
 
 ##---------------------------------create ggplots--------------------------------------------##
-b_all <- make_bar_plot(all_samples_n,skippable_exons) + labs(x="exon",y="mean read count", title=paste0(gene," skipped exons in all samples (n=", length(all_samples_COL7$`1`), ") (>0=", sum(na.omit(all_samples_COL7)>0), ")"))
-b_skin <- make_bar_plot(skin_data,skippable_exons) + labs(x="exon", y="mean read count", title=paste0(gene," skipped exons in skin samples (n=",length(skin_data$`1`), ") (>0=", sum(na.omit(skin_data)>0),")"))
-b_brain <- make_bar_plot(brain_data, skippable_exons) + labs(x="exon", y="mean read count", title=paste0(gene," skipped exons in brain samples (n=",length(brain_data$`1`), ") (>0=", sum(na.omit(brain_data)>0),")"))
-b_muscle <- make_bar_plot(muscle_data, skippable_exons) + labs(x="exon", y="mean read count", title=paste0(gene," skipped exons in muscle samples (n=",length(muscle_data$`1`), ") (>0=", sum(na.omit(muscle_data)>0),")"))
-b_blood <- make_bar_plot(blood_data,skippable_exons) + labs(x="exon", y="mean read count", title=paste0(gene," skipped exons in blood samples (n=",length(blood_data$`1`), ") (>0=", sum(na.omit(blood_data)>0),")"))
-b_liver <- make_bar_plot(liver_data, skippable_exons) + labs(x="exon", y="mean read count", title=paste0(gene," skipped exons in liver samples (n=",length(liver_data$`1`), ") (>0=", sum(na.omit(liver_data)>0),")"))
-b_heart <- make_bar_plot(heart_data, skippable_exons) + labs(x="exon", y="mean read count", title=paste0(gene," skipped exons in heart samples (n=",length(heart_data$`1`), ") (>0=", sum(na.omit(heart_data)>0),")"))
-b_esophagus <- make_bar_plot(esophagus_data, skippable_exons) + labs(x="exon", y="mean read count", title=paste0(gene," skipped exons in esophagus samples (n=",length(esophagus_data$`1`), ") (>0=", sum(na.omit(esophagus_data)>0),")"))
-b_intestine <- make_bar_plot(intestine_data, skippable_exons) + labs(x="exon", y="mean read count", title=paste0(gene," skipped exons in intestine samples (n=",length(intestine_data$`1`), ") (>0=", sum(na.omit(intestine_data)>0),")"))
+b_all <- make_bar_plot(all_samples_n,skippable_exons) + labs(x="exon",y="mean normalized read count", title=paste0(gene," skipped exons in all samples (n=", length(all_samples_n$`1`), ") (>0=", sum(na.omit(all_samples_n)>0), ")"))
+b_skin <- make_bar_plot(skin_data,skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in skin samples (n=",length(skin_data$`1`), ") (>0=", sum(na.omit(skin_data)>0),")"))
+b_brain <- make_bar_plot(brain_data, skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in brain samples (n=",length(brain_data$`1`), ") (>0=", sum(na.omit(brain_data)>0),")"))
+b_muscle <- make_bar_plot(muscle_data, skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in muscle samples (n=",length(muscle_data$`1`), ") (>0=", sum(na.omit(muscle_data)>0),")"))
+b_blood <- make_bar_plot(blood_data,skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in blood samples (n=",length(blood_data$`1`), ") (>0=", sum(na.omit(blood_data)>0),")"))
+b_liver <- make_bar_plot(liver_data, skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in liver samples (n=",length(liver_data$`1`), ") (>0=", sum(na.omit(liver_data)>0),")"))
+b_heart <- make_bar_plot(heart_data, skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in heart samples (n=",length(heart_data$`1`), ") (>0=", sum(na.omit(heart_data)>0),")"))
+b_esophagus <- make_bar_plot(esophagus_data, skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in esophagus samples (n=",length(esophagus_data$`1`), ") (>0=", sum(na.omit(esophagus_data)>0),")"))
+b_intestine <- make_bar_plot(intestine_data, skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in intestine samples (n=",length(intestine_data$`1`), ") (>0=", sum(na.omit(intestine_data)>0),")"))
 ##---------------------------------display plots---------------------------------------------##
 left_align_plots(list(b_skin, b_all, b_blood))
 left_align_plots(list(b_brain, b_all, b_muscle))
