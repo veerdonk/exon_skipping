@@ -34,12 +34,12 @@ col7_exon_annotation <- function(){
 
 ##-------------------------------------download/load study----------------------------------------------##
 download_study_jx <- function(study){
-  if(!file.exists(file.path(study, "rse_jx.Rdata"))){
-    download_study(study, type = "rse-jx")
+  if(!file.exists(file.path(study, "rse_exon.Rdata"))){
+    download_study(study, type = "rse-exon")
   }
   ## check and load data
-  if(file.exists(file.path(study, "rse_jx.Rdata"))){
-    load(file.path(study, "rse_jx.Rdata"))
+  if(file.exists(file.path(study, "rse_exon.Rdata"))){
+    load(file.path(study, "rse_exon.Rdata"))
   }
   file.remove(file.path(study, "rse_jx.Rdata"))
   file.remove(file.path(study))
@@ -118,6 +118,12 @@ find_skipped_exons <- function(study){
   print("Done.")
   print("Searching for skipped exons..")
   
+  ###
+  avg_read_length <- mean(colData(rse)$avg_read_length)
+  avg_read_sd <- sd(colData(rse)$avg_read_length)
+  possible_false_positives <- c()
+  
+  ###
   
   # retrieving all start and stop positions for col7a1
   start_stop <- as.data.frame(t(sapply(as.integer(col7_jx$junction_id), function(x) jx_bed[jx_bed$id == x,1:3])))
@@ -139,6 +145,10 @@ find_skipped_exons <- function(study){
     for(j in 1:nrow(col7_exons)){
      #if(col7_start_stop$start[i] >= col7_exons$start[1] && as.numeric(col7_start_stop$stop[i]) <= col7_exons$stop[118]){
         if((col7_exons$start[j] - alternative_length) > col7_start_stop$start[i] & (col7_exons$stop[j] + alternative_length) < col7_start_stop$stop[i]){
+          if(j >= 2){
+          if((col7_exons$start[j-1] + (avg_read_length + 2*avg_read_sd) + (col7_exons$start[j] - col7_exons$stop[j-1])) > col7_exons$stop[j]){
+            possible_false_positives <- c(possible_false_positives, col7_start_stop$junction_id[i])
+          }}
           if(exists(col7_exons$info[j], where = skipped_exons)){
             val <- skipped_exons[[col7_exons$info[j]]]
             skipped_exons[[col7_exons$info[j]]] <- c(val, col7_start_stop$junction_id[i])
@@ -156,7 +166,9 @@ find_skipped_exons <- function(study){
   # no_skips_o$x <- as.factor(no_skips_o$x)
   # plot(sort(no_skips$freq), ylab="number of skips", xlab = "junction id (numbered)")
   
-  good_jx_ids <- count(unlist(unname(skipped_exons)))[count(unlist(unname(skipped_exons)))$freq < 10,1]
+  good_jx_ids <- count(unlist(unname(skipped_exons)))[count(unlist(unname(skipped_exons)))$freq == 1,1]
+  
+  good_jx_ids[!good_jx_ids %in% possible_false_positives]
   #counts_per_skipped_exon <- sapply(names(skipped_exons), function(x) find_read_counts(skipped_exons[[x]], col7_jx))
   #count_table_skipped <- as.data.frame(t(sapply(names(skipped_exons), function(x) find_counts_table(skipped_exons[[x]], col7_jx, good_jx_ids))))
   

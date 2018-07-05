@@ -54,9 +54,12 @@ read_and_normalize <- function(fileDir, exon_lengths, strand){
   }
   colnames(all_samples) <- colnms
   #correct for exon length:
+  all_samples_n <- all_samples
   #all_samples_n <- as.data.frame(t(t(all_samples) / exon_lengths))
   return(all_samples_n)
 }
+fileDirCol7_no_scale <- "/Users/david/Documents/data/cluster_output/col7_no_scale"
+fileDirCol7_false_positives <- "/Users/david/Documents/data/cluster_output/col7_false_positives"
 fileDirCol17 <- "/Users/david/Documents/data/cluster_output/col17"
 fileDirCol7 <- "/Users/david/Documents/data/cluster_output/col7"
 fileDirCol71ex <- "/Users/david/Documents/data/cluster_output/col7_1ex/"
@@ -64,6 +67,8 @@ fileDirDMD <- "/Users/david/Documents/data/cluster_output/dmd"
 fileDirTTN <- "/Users/david/Documents/data/cluster_output/ttn"
 fileDirGPI <- "/Users/david/Documents/data/cluster_output/gpi"
 test <- "~/Documents/data/reverse_test/"
+all_samples_COL7_false_positives <- read_and_normalize(fileDirCol7_false_positives, col7_exon_lengths, col7_strand)
+all_samples_COL7_no_scale <- read_and_normalize(fileDirCol7_no_scale, col7_exon_lengths, col7_strand)
 all_samples_COL17 <- read_and_normalize(fileDirCol17, col17_exon_lengths)
 all_samples_COL7 <- read_and_normalize(fileDirCol7, col7_exon_lengths, col7_strand)
 all_samples_COL7_1ex <- read_and_normalize(fileDirCol71ex, col7_exon_lengths, col7_strand)
@@ -80,8 +85,8 @@ make_bar_plot <- function(tbl, skippable_exons){
   }
   sampled_sds <- apply(multi_sample, 1, sd)
   barData <- data.frame(colMeans(na.omit(tbl)))
-  colnames(barData) <- "dat"
-  barData$exon <- factor(as.character(row.names(barData)), levels = unique(row.names(barData)))#as.numeric(row.names(barData))#factor(as.character(row.names(barData)), levels = unique(row.names(barData)))
+  colnames(barData) <- "dat" #
+  barData$exon <- rev(1:118)#factor(as.character(row.names(barData)), levels = unique(row.names(barData)))#as.numeric(row.names(barData))#factor(as.character(row.names(barData)), levels = unique(row.names(barData)))
   barData$values <- colSums(na.omit(tbl > 0))
   if(length(skippable_exons) > 1){ 
   barData$frame <- as.factor(ifelse(barData$exon %in% skippable_exons, "in frame", "out of frame"))
@@ -155,9 +160,9 @@ skippable_exons_gpi <- c()
 
 ##---------------------------------specify gene to use---------------------------------------##
 
-all_samples_n <- all_samples_COL7#all_samples_COL7_1ex#all_samples_GPI#all_samples_COL17#all_samples_TTN#all_samples_DMD#
+all_samples_n <- all_samples_COL7_false_positives#all_samples_COL7_1ex#all_samples_COL7_no_scale#all_samples_COL7#all_samples_GPI#all_samples_COL17#all_samples_TTN#all_samples_DMD#
 skippable_exons <-   skippable_exons_col7#skippable_exons_gpi#skippable_exons_col17#skippable_exons_ttn#skippable_exons_dmd#
-gene <- "COL7A1 (10 skips)"#"GPI"#"COL17A1"#"TTN"#"DMD"#  
+gene <- "COL7A1"#"GPI"#"COL17A1"#"TTN"#"DMD"#  
 ##--------------------------------get data for tissues---------------------------------------##
 skin_data <- all_samples_n[row.names(all_samples_n) %in% skin_studies,]
 brain_data <- all_samples_n[row.names(all_samples_n) %in% brain_studies,]
@@ -169,14 +174,14 @@ esophagus_data <- all_samples_n[row.names(all_samples_n) %in% esophagus_studies,
 intestine_data <- all_samples_n[row.names(all_samples_n) %in% intestine_studies,]
 
 ##---------------------------------create ggplots--------------------------------------------##
-b_all <- make_bar_plot(all_samples_n,skippable_exons) + labs(x="exon",y="mean normalized read count", title=paste0(gene," skipped exons in all samples (n=", length(all_samples_n$`1`), ") (>0=", sum(na.omit(all_samples_n)>0), ")"))
-b_skin <- make_bar_plot(skin_data,skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in skin samples (n=",length(skin_data$`1`), ") (>0=", sum(na.omit(skin_data)>0),")"))
+b_all <- make_bar_plot(all_samples_n,skippable_exons) + labs(x="exon",y="mean normalized read count", title=paste0(gene," skipped exons in all samples"))# (n=", length(all_samples_n$`1`), ") (>0=", sum(na.omit(all_samples_n)>0), ")"))
+b_skin <- make_bar_plot(skin_data,skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in skin samples")) #(n=",length(skin_data$`1`), ") (>0=", sum(na.omit(skin_data)>0),")"))
 b_brain <- make_bar_plot(brain_data, skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in brain samples (n=",length(brain_data$`1`), ") (>0=", sum(na.omit(brain_data)>0),")"))
 b_muscle <- make_bar_plot(muscle_data, skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in muscle samples (n=",length(muscle_data$`1`), ") (>0=", sum(na.omit(muscle_data)>0),")"))
 b_blood <- make_bar_plot(blood_data,skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in blood samples (n=",length(blood_data$`1`), ") (>0=", sum(na.omit(blood_data)>0),")"))
 b_liver <- make_bar_plot(liver_data, skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in liver samples (n=",length(liver_data$`1`), ") (>0=", sum(na.omit(liver_data)>0),")"))
 b_heart <- make_bar_plot(heart_data, skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in heart samples (n=",length(heart_data$`1`), ") (>0=", sum(na.omit(heart_data)>0),")"))
-b_esophagus <- make_bar_plot(esophagus_data, skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in esophagus samples (n=",length(esophagus_data$`1`), ") (>0=", sum(na.omit(esophagus_data)>0),")"))
+b_esophagus <- make_bar_plot(esophagus_data, skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in esophagus samples")) #(n=",length(esophagus_data$`1`), ") (>0=", sum(na.omit(esophagus_data)>0),")"))
 b_intestine <- make_bar_plot(intestine_data, skippable_exons) + labs(x="exon", y="mean normalized read count", title=paste0(gene," skipped exons in intestine samples (n=",length(intestine_data$`1`), ") (>0=", sum(na.omit(intestine_data)>0),")"))
 ##---------------------------------display plots---------------------------------------------##
 left_align_plots(list(b_skin, b_all, b_blood))
@@ -207,3 +212,57 @@ ggplot(exonic_mutations[exonic_mutations$inheritance == "recessive",], aes(Exon)
 ggplot(exonic_mutations[exonic_mutations$inheritance == "dominant",], aes(Exon)) + geom_histogram(bins = 118)
 
 
+##-----------------------------COl7 SNPs----------------------------------------------------##
+col7_snps <- read.delim("/Users/david/Documents/data/all_col7a1snps.tsv")
+col7_known_mutations <- read.delim("/Users/david/Documents/data/debcentral_10mei2017_variants_gavin.vcf")
+col7_exons <- all_exon_bed[all_exon_bed$ucsc_id == "uc003ctz.3",]
+col7_exons$exon <- rev(1:118)
+
+find_exon_for_pos <- function(pos){
+  for(start in col7_exons$start){
+    if(start <= pos){
+      for(stop in col7_exons$stop){
+        if(stop >= pos){
+          return(col7_exons[col7_exons$stop == stop,8])
+        }
+      }
+    }
+  }
+  
+}
+lapply(col7_snps$pos[1:10], find_exon_for_pos)
+
+##---------------------------------exon counts col7-----------------------------------------##
+col7_ranges <- ranges(reduce(recount_exons$ENSG00000114270.16))
+start(col7_ranges)
+end(col7_ranges)
+
+exon_labs <- c(1:118)
+exon_labs[109:110] <- "109,110"
+exon_labs[61:62] <- "61,62"
+exon_labs[91:92] <- "91,92"
+exon_labs[96:98] <- "96,97,98"
+exon_labs <- unique(exon_labs)
+
+
+col7_exon_reads <- read.csv("/Users/david/Documents/data/cluster_output/col7_exons/col7_exon_reads.csv", header = FALSE)
+col7_exon_reads$V1 <- NULL
+col7_exon_reads <- as.data.frame(t(round(t(col7_exon_reads) / width(col7_ranges))*100))
+colnames(col7_exon_reads) <- exon_labs
+barData <- data.frame(rev(colMeans(na.omit(col7_exon_reads))))
+colnames(barData) <-  "dat"
+barData$exon <-  factor(as.character(exon_labs), levels = unique(exon_labs))
+skippable_exons_ex <- c(skippable_exons, "109,110", "61,62", "91,92", "96,97,98")
+barData$frame <- as.factor(ifelse(as.character(barData$exon) %in% skippable_exons_ex, "in frame", "out of frame"))
+
+exon_counts <- ggplot(barData, aes(x=exon, y=dat, color=frame)) + geom_bar(stat = "identity") + theme(axis.text.x = element_text(size = 3.5, angle = 90, vjust = 0.5, hjust = 1)) + labs(x="exon", y="mean normalized read count", title="COL7A1 exon counts") + scale_color_manual(values=c("#5ab4ac", "#d8b365"))
+
+
+col7_means <- rev(colMeans(na.omit(all_samples_n)))
+col7_means[109:110] <- sum(col7_means[109:110])
+col7_means[61:62] <- sum(col7_means[61:62])
+col7_means[91:92] <- sum(col7_means[91:92])
+col7_means[96:98] <- sum(col7_means[96:98])
+col7_means_reduced <- col7_means[-c(110, 62, 92, 97,98)]
+
+cor(colMeans(na.omit(col7_exon_reads)), col7_means_reduced, method = "spearman")
