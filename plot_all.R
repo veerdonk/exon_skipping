@@ -55,7 +55,7 @@ read_and_normalize <- function(fileDir, exon_lengths, strand){
   colnames(all_samples) <- colnms
   #correct for exon length:
   all_samples_n <- all_samples
-  #all_samples_n <- as.data.frame(t(t(all_samples) / exon_lengths))
+  all_samples_n <- as.data.frame(t(t(all_samples) / exon_lengths))
   return(all_samples_n)
 }
 fileDirCol7_no_scale <- "/Users/david/Documents/data/cluster_output/col7_no_scale"
@@ -213,25 +213,38 @@ ggplot(exonic_mutations[exonic_mutations$inheritance == "dominant",], aes(Exon))
 
 
 ##-----------------------------COl7 SNPs----------------------------------------------------##
+install.packages("vcfR")
+library("vcfR")
 col7_snps <- read.delim("/Users/david/Documents/data/all_col7a1snps.tsv")
-col7_known_mutations <- read.delim("/Users/david/Documents/data/debcentral_10mei2017_variants_gavin.vcf")
-col7_exons <- all_exon_bed[all_exon_bed$ucsc_id == "uc003ctz.3",]
-col7_exons$exon <- rev(1:118)
+col7_vcf <- read.vcfR("/Users/david/Documents/data/debcentral_10mei2017_variants_gavin.vcf")
+col7_37 <- read.delim("/Users/david/Documents/data/col7_hg37_exons.bed", header = FALSE, stringsAsFactors = FALSE)
+colnames(col7_37) <- c("chromosome", "start", "stop", "info", "zero", "strand")#column names
+col7_37$ucsc_id <- unlist(lapply(col7_37$info, function(x) strsplit(x, "_")[[1]][1]))
 
+col7_37_exons <- col7_37[col7_37$ucsc_id == "uc003ctz.2",]
+col7_37_exons$exon <- rev(1:118)
+
+
+col7_known_mutations <- data.frame(as.numeric(col7_vcf@fix[,"POS"]))
+colnames(col7_known_mutations) <- "position"
+col7_known_mutations$cadd <- unlist(lapply(col7_vcf@fix[,"INFO"], function(x) as.numeric(strsplit(strsplit(x, ";")[[1]][2], "=")[[1]][2])))
+col7_known_mutations$exon <- unlist(lapply(col7_vcf@fix[,"INFO"], function(x) as.numeric(strsplit(strsplit(x, "|", fixed = TRUE)[[1]][9], "/", fixed = TRUE)[[1]][1])))
 find_exon_for_pos <- function(pos){
-  for(start in col7_exons$start){
+  for(start in col7_37_exons$start){
     if(start <= pos){
-      for(stop in col7_exons$stop){
+      for(stop in col7_37_exons$stop){
         if(stop >= pos){
-          return(col7_exons[col7_exons$stop == stop,8])
+          return(col7_37_exons[col7_37_exons$stop == stop,8])
         }
       }
     }
   }
-  
+  return(NA)
 }
-lapply(col7_snps$pos[1:10], find_exon_for_pos)
 
+col7_snps$exon <- unlist(lapply(col7_snps$pos, find_exon_for_pos))
+sum(na.omit(col7_snps$exon) == 97)
+col7_snps$phred
 ##---------------------------------exon counts col7-----------------------------------------##
 col7_ranges <- ranges(reduce(recount_exons$ENSG00000114270.16))
 start(col7_ranges)
@@ -266,3 +279,21 @@ col7_means[96:98] <- sum(col7_means[96:98])
 col7_means_reduced <- col7_means[-c(110, 62, 92, 97,98)]
 
 cor(colMeans(na.omit(col7_exon_reads)), col7_means_reduced, method = "spearman")
+
+#percentage
+read_sums <- rev(colSums(na.omit(all_samples_COL7_false_positives)))
+exon_sums <- colSums(na.omit(col7_exon_reads))/100
+
+
+percentages <- c(read_sums[1:60]/exon_sums[1:60]*100,
+read_sums[61:62]/exon_sums[61]*100,
+read_sums[63:90]/exon_sums[62:89]*100,
+read_sums[91:92]/exon_sums[90]*100,
+read_sums[93:95]/exon_sums[91:93]*100,
+read_sums[96:98]/exon_sums[94]*100,
+read_sums[99:108]/exon_sums[95:104]*100,
+read_sums[109:110]/exon_sums[105]*100,
+read_sums[111:118]/exon_sums[106:113]*100)
+
+percentages
+exon_sums
