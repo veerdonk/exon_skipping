@@ -66,6 +66,11 @@ download_jx_bed <- function(study){
 prepare_recount_study <- function(rse_jx){
 
   rse <- scale_counts(rse_jx, by = 'mapped_reads', round = FALSE) #create a scaled rse
+  scale_counts(rse_jx, by="mapped_reads", factor_only = TRUE)
+  assays(rse_jx)$counts
+  colData(rse_jx)$mapped_read_count/1e6
+  t((t(junction_counts) / (colData(rse_jx)$mapped_read_count/1e6))*40)#scale all read counts to total coverage of 40mil reads.
+  t((t(junction_counts) / (colData(rse_jx)$mapped_read_count/1e6))*40)
   #rse <- read_counts(rse_jx) #read counts for normalizing with TPM
   #rse <- rse_jx
   
@@ -145,8 +150,8 @@ find_skipped_exons <- function(study){
     for(j in 1:nrow(col7_exons)){
      #if(col7_start_stop$start[i] >= col7_exons$start[1] && as.numeric(col7_start_stop$stop[i]) <= col7_exons$stop[118]){
         if((col7_exons$start[j] - alternative_length) > col7_start_stop$start[i] & (col7_exons$stop[j] + alternative_length) < col7_start_stop$stop[i]){
-          if(j >= 2){
-          if((col7_exons$start[j-1] + (avg_read_length + 2*avg_read_sd) + (col7_exons$start[j] - col7_exons$stop[j-1])) > col7_exons$stop[j]){
+          if(j >= 2 && j < 118){
+          if(col7_start_stop$start[i]+((col7_exons$start[j+1]-col7_exons$stop[j])+(col7_exons$start[j]-col7_exons$stop[(j-1)])) + (avg_read_length+2*avg_read_sd) <= col7_start_stop$stop[i]){
             possible_false_positives <- c(possible_false_positives, col7_start_stop$junction_id[i])
           }}
           if(exists(col7_exons$info[j], where = skipped_exons)){
@@ -386,4 +391,7 @@ for(study in skin_studies$project){
   rse <- download_study_jx(study)
   skin_samples <- c(skin_samples, colData(rse)$sample)
 }
+
+
+
 

@@ -55,11 +55,13 @@ read_and_normalize <- function(fileDir, exon_lengths, strand){
   colnames(all_samples) <- colnms
   #correct for exon length:
   all_samples_n <- all_samples
-  all_samples_n <- as.data.frame(t(t(all_samples) / exon_lengths))
+  #all_samples_n <- as.data.frame(t(t(all_samples) / exon_lengths))
   return(all_samples_n)
 }
 fileDirCol7_no_scale <- "/Users/david/Documents/data/cluster_output/col7_no_scale"
+fileDirCol7_new_scale <- "/Users/david/Documents/data/cluster_output/col7_new_scale"
 fileDirCol7_false_positives <- "/Users/david/Documents/data/cluster_output/col7_false_positives"
+fileDirCol7_false_positives_old <- "/Users/david/Documents/data/cluster_output/old_data/false_positives/old"
 fileDirCol17 <- "/Users/david/Documents/data/cluster_output/col17"
 fileDirCol7 <- "/Users/david/Documents/data/cluster_output/col7"
 fileDirCol71ex <- "/Users/david/Documents/data/cluster_output/col7_1ex/"
@@ -67,7 +69,9 @@ fileDirDMD <- "/Users/david/Documents/data/cluster_output/dmd"
 fileDirTTN <- "/Users/david/Documents/data/cluster_output/ttn"
 fileDirGPI <- "/Users/david/Documents/data/cluster_output/gpi"
 test <- "~/Documents/data/reverse_test/"
+all_samples_COL7_new_scale <- read_and_normalize(fileDirCol7_new_scale, col7_exon_lengths, col7_strand)
 all_samples_COL7_false_positives <- read_and_normalize(fileDirCol7_false_positives, col7_exon_lengths, col7_strand)
+all_samples_COL7_false_positives_old <- read_and_normalize(fileDirCol7_false_positives_old, col7_exon_lengths, col7_strand)
 all_samples_COL7_no_scale <- read_and_normalize(fileDirCol7_no_scale, col7_exon_lengths, col7_strand)
 all_samples_COL17 <- read_and_normalize(fileDirCol17, col17_exon_lengths)
 all_samples_COL7 <- read_and_normalize(fileDirCol7, col7_exon_lengths, col7_strand)
@@ -160,7 +164,7 @@ skippable_exons_gpi <- c()
 
 ##---------------------------------specify gene to use---------------------------------------##
 
-all_samples_n <- all_samples_COL7_false_positives#all_samples_COL7_1ex#all_samples_COL7_no_scale#all_samples_COL7#all_samples_GPI#all_samples_COL17#all_samples_TTN#all_samples_DMD#
+all_samples_n <- all_samples_COL7#all_samples_COL7_1ex#all_samples_COL7_new_scale#all_samples_COL7_false_positives#all_samples_COL7_no_scale#all_samples_GPI#all_samples_COL17#all_samples_TTN#all_samples_DMD#
 skippable_exons <-   skippable_exons_col7#skippable_exons_gpi#skippable_exons_col17#skippable_exons_ttn#skippable_exons_dmd#
 gene <- "COL7A1"#"GPI"#"COL17A1"#"TTN"#"DMD"#  
 ##--------------------------------get data for tissues---------------------------------------##
@@ -213,7 +217,7 @@ ggplot(exonic_mutations[exonic_mutations$inheritance == "dominant",], aes(Exon))
 
 
 ##-----------------------------COl7 SNPs----------------------------------------------------##
-install.packages("vcfR")
+#install.packages("vcfR")
 library("vcfR")
 col7_snps <- read.delim("/Users/david/Documents/data/all_col7a1snps.tsv")
 col7_vcf <- read.vcfR("/Users/david/Documents/data/debcentral_10mei2017_variants_gavin.vcf")
@@ -245,6 +249,18 @@ find_exon_for_pos <- function(pos){
 col7_snps$exon <- unlist(lapply(col7_snps$pos, find_exon_for_pos))
 sum(na.omit(col7_snps$exon) == 97)
 col7_snps$phred
+mut_counts <- count(na.omit(col7_snps$exon))
+
+snp_plot <- ggplot(data=mut_counts, aes(y=freq, x=x)) + geom_bar(stat="identity") + labs(x="exon", y="number of SNPs", title="Distribution of SNPs in COL7A1")
+
+
+deb_central_exons <- c()
+for(i in 1:length(col7_vcf@fix[,1])){
+  deb_central_exons <- c(deb_central_exons, as.numeric(strsplit(strsplit(col7_vcf@fix[i,], "|", fixed = TRUE)$INFO[9], "/")[[1]][1]))
+}
+deb_counts <- count(deb_central_exons)
+deb_plot <- ggplot(deb_counts, aes(x=x, y=freq)) + geom_bar(stat="identity") + labs(x="exon", y="number of mutation", title="Pathogenic mutations in deb-central")
+
 ##---------------------------------exon counts col7-----------------------------------------##
 col7_ranges <- ranges(reduce(recount_exons$ENSG00000114270.16))
 start(col7_ranges)
@@ -260,15 +276,15 @@ exon_labs <- unique(exon_labs)
 
 col7_exon_reads <- read.csv("/Users/david/Documents/data/cluster_output/col7_exons/col7_exon_reads.csv", header = FALSE)
 col7_exon_reads$V1 <- NULL
-col7_exon_reads <- as.data.frame(t(round(t(col7_exon_reads) / width(col7_ranges))*100))
+col7_exon_reads <- as.data.frame(t(round(t(col7_exon_reads) / width(col7_ranges))))
 colnames(col7_exon_reads) <- exon_labs
-barData <- data.frame(rev(colMeans(na.omit(col7_exon_reads))))
+barData <- data.frame(rev(colSums(na.omit(col7_exon_reads))))
 colnames(barData) <-  "dat"
 barData$exon <-  factor(as.character(exon_labs), levels = unique(exon_labs))
 skippable_exons_ex <- c(skippable_exons, "109,110", "61,62", "91,92", "96,97,98")
 barData$frame <- as.factor(ifelse(as.character(barData$exon) %in% skippable_exons_ex, "in frame", "out of frame"))
 
-exon_counts <- ggplot(barData, aes(x=exon, y=dat, color=frame)) + geom_bar(stat = "identity") + theme(axis.text.x = element_text(size = 3.5, angle = 90, vjust = 0.5, hjust = 1)) + labs(x="exon", y="mean normalized read count", title="COL7A1 exon counts") + scale_color_manual(values=c("#5ab4ac", "#d8b365"))
+exon_counts_plot <- ggplot(barData, aes(x=exon, y=dat, color=frame)) + geom_bar(stat = "identity") + theme(axis.text.x = element_text(size = 3.5, angle = 90, vjust = 0.5, hjust = 1)) + labs(x="exon", y="mean normalized read count", title="COL7A1 exon counts") + scale_color_manual(values=c("#5ab4ac", "#d8b365"))
 
 
 col7_means <- rev(colMeans(na.omit(all_samples_n)))
@@ -297,3 +313,71 @@ read_sums[111:118]/exon_sums[106:113]*100)
 
 percentages
 exon_sums
+
+jeroen_exons <- c(15,19,20,33,53,70,71,74,74,76,87,87,87,87,87,87,87,87,87,87,106,107,108,108,111,111,115)
+
+
+##-------------------------------------histogram--------------------------------------------##
+ordered_exons <- rev(colMeans(na.omit(all_samples_COL7_1ex))[order(colMeans(na.omit(all_samples_COL7_1ex)))])
+
+barData <- data.frame(unname(ordered_exons))
+colnames(barData) <- "dat"
+barData$exon <- factor(names(ordered_exons), levels = names(ordered_exons))
+order_bar <- ggplot(data =barData, aes(x=exon, y=dat)) + geom_bar(stat = "identity", position = "dodge")
+order_bar <- order_bar + theme(axis.text.x = element_text(size = 5, angle = 90, vjust = 0.5, hjust = 1))       
+order_bar + labs(x="exon", y="mean normalized read count", title="COL7A1 exons ordered by exon skips")
+
+point_data <- data.frame(col7_exon_lengths)
+colnames(point_data) <- "exon_lengths"
+point_data$exon <- names(colSums(na.omit(all_samples_COL7_new_scale)))
+point_data$read_count <- unname(colSums(na.omit(all_samples_COL7_new_scale)))
+point_data$frame <- as.factor(ifelse(point_data$exon %in% skippable_exons, "in frame", "out of frame"))
+
+ggplot(point_data, aes(x=exon_lengths, y=read_count, color=frame)) + geom_point() + scale_color_manual(values=c("#5ab4ac", "#d8b365")) + labs(x="exon length", y="scaled read count", title="Number of reads for exon lengths")
+cor( point_data$read_count, point_data$exon_lengths)
+
+
+##-------------------------------------average--------------------------------------------##
+read_multi <- function(fileDir){
+  # read the files into a list of data.frames
+  data.list <- lapply(list.files(path = fileDir, full.names = TRUE), function(x) read.csv(x, row.names = NULL))
+  
+  for(i in 1:length(data.list)){
+    colnames(data.list[[i]]) <- 1:length(colnames(data.list[[i]]))
+  }
+  
+  # concatenate into one big data.frame
+  data.cat <- as.data.frame(do.call(rbind, data.list))
+  
+  #all_samples <- subset(data.cat,!duplicated(data.cat$row.names))
+  # row.names(all_samples) <- all_samples$row.names
+  # all_samples$row.names <- c()
+
+  #correct for exon length:
+  #all_samples_n <- all_samples
+  #all_samples_n <- as.data.frame(t(t(all_samples) / exon_lengths))
+  return(data.cat)
+}
+CHST8_dir <- "/Users/david/Documents/data/cluster_output/eb/CHST8/"
+CSTA_dir <- "/Users/david/Documents/data/cluster_output/eb/CSTA/"
+all_dir <- "/Users/david/Documents/data/cluster_output/eb/"
+
+eb_data <- list()
+i = 1
+for(dir in list.dirs(all_dir)){
+  if(dir != "/Users/david/Documents/data/cluster_output/eb/"){
+    eb_data[[dir]] <- read_multi(dir)
+    i <- i + 1
+  }
+  
+}
+
+means <- c()
+sds <- c()
+for(tbl in eb_data){
+  means <- c(means, colMeans(na.omit(tbl[-1])))
+  colMeans(na.omit(tbl[-1]))
+}
+means <- c(means, mean(colMeans(na.omit(all_samples_COL7_1ex))))
+
+b_all + geom_hline(yintercept = mean(means)) + geom_hline(yintercept = 0.009500461)
