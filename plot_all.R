@@ -164,7 +164,7 @@ skippable_exons_gpi <- c()
 
 ##---------------------------------specify gene to use---------------------------------------##
 
-all_samples_n <- all_samples_COL7#all_samples_COL7_1ex#all_samples_COL7_new_scale#all_samples_COL7_false_positives#all_samples_COL7_no_scale#all_samples_GPI#all_samples_COL17#all_samples_TTN#all_samples_DMD#
+all_samples_n <- all_samples_COL7#all_samples_COL7_new_scale#all_samples_COL7_false_positives#all_samples_COL7_no_scale#all_samples_GPI#all_samples_COL17#all_samples_TTN#all_samples_DMD#
 skippable_exons <-   skippable_exons_col7#skippable_exons_gpi#skippable_exons_col17#skippable_exons_ttn#skippable_exons_dmd#
 gene <- "COL7A1"#"GPI"#"COL17A1"#"TTN"#"DMD"#  
 ##--------------------------------get data for tissues---------------------------------------##
@@ -252,7 +252,7 @@ col7_snps$phred
 mut_counts <- count(na.omit(col7_snps$exon))
 
 snp_plot <- ggplot(data=mut_counts, aes(y=freq, x=x)) + geom_bar(stat="identity") + labs(x="exon", y="number of SNPs", title="Distribution of SNPs in COL7A1")
-
+mut_counts[mut_counts$x == 97,]
 
 deb_central_exons <- c()
 for(i in 1:length(col7_vcf@fix[,1])){
@@ -333,8 +333,10 @@ point_data$exon <- names(colSums(na.omit(all_samples_COL7_new_scale)))
 point_data$read_count <- unname(colSums(na.omit(all_samples_COL7_new_scale)))
 point_data$frame <- as.factor(ifelse(point_data$exon %in% skippable_exons, "in frame", "out of frame"))
 
-ggplot(point_data, aes(x=exon_lengths, y=read_count, color=frame)) + geom_point() + scale_color_manual(values=c("#5ab4ac", "#d8b365")) + labs(x="exon length", y="scaled read count", title="Number of reads for exon lengths")
-cor( point_data$read_count, point_data$exon_lengths)
+ggplot(point_data, aes(x=exon_lengths, y=read_count, color=frame)) + geom_point() + scale_color_manual(values=c("#5ab4ac", "#d8b365")) + labs(x="exon length", y="scaled read count", title="Number of reads for exon lengths") + annotate("text", x=300, y=max(point_data$read_count), label=paste0("pval: ", round(cor.test(point_data$read_count, point_data$exon_lengths)$p.val, 4)))
+  
+
+cor(point_data$read_count, point_data$exon_lengths)
 
 
 ##-------------------------------------average--------------------------------------------##
@@ -358,16 +360,12 @@ read_multi <- function(fileDir){
   #all_samples_n <- as.data.frame(t(t(all_samples) / exon_lengths))
   return(data.cat)
 }
-CHST8_dir <- "/Users/david/Documents/data/cluster_output/eb/CHST8/"
-CSTA_dir <- "/Users/david/Documents/data/cluster_output/eb/CSTA/"
-all_dir <- "/Users/david/Documents/data/cluster_output/eb/"
+all_dir <- list.dirs("/Users/david/Documents/data/cluster_output/eb/")
 
 eb_data <- list()
-i = 1
-for(dir in list.dirs(all_dir)){
+for(dir in all_dir){
   if(dir != "/Users/david/Documents/data/cluster_output/eb/"){
     eb_data[[dir]] <- read_multi(dir)
-    i <- i + 1
   }
   
 }
@@ -375,9 +373,12 @@ for(dir in list.dirs(all_dir)){
 means <- c()
 sds <- c()
 for(tbl in eb_data){
-  means <- c(means, colMeans(na.omit(tbl[-1])))
-  colMeans(na.omit(tbl[-1]))
+  colmns <- colMeans(na.omit(tbl[-1]))
+  colmns[1] <- 0
+  colmns[length(colmns)] <- 0
+  means <- c(means, mean(colmns))
 }
-means <- c(means, mean(colMeans(na.omit(all_samples_COL7_1ex))))
+means <- c(means, colMeans(na.omit(all_samples_COL7_1ex)))
+means[means == Inf] <- 0
 
-b_all + geom_hline(yintercept = mean(means)) + geom_hline(yintercept = 0.009500461)
+b_all + geom_hline(yintercept = mean(means), linetype=3, color="red") + labs(title="Average exon skipping in EB genes")

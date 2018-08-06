@@ -1,9 +1,10 @@
 #! /usr/bin/python3
 
 import math
+import sys
 
-outDir = "jobs/eb/COL17A1/"
-baseName = "COL17A1"
+outDir = "jobs/eb/{}/".format(sys.argv[1])
+baseName = sys.argv[1]
 nJobs = math.ceil(2014/100)
 pathToDir = "/groups/umcg-gcc/tmp03/umcg-dvdveerdonk/"
 
@@ -42,9 +43,9 @@ Rscript {}find_other_gene_cmd.R \\
 {}{} \\
 {} \\
 {} {} {}'''.format(jobName, jobName, jobName, \
-pathToDir, pathToDir+"output/col7_test/" ,jobName + "out.csv", pathToDir, \
-"bed/col17a1_exons.bed", ranges[i][0], ranges[i][1],\
-"ENSG00000065618.17", "uc001kxr.4"))
+pathToDir, pathToDir+"output/eb/{}/".format(sys.argv[1]) ,jobName + "out.csv", pathToDir, \
+"bed/EB_exons.bed", ranges[i][0], ranges[i][1],\
+sys.argv[2], sys.argv[3]))
 
 
 	outfile.close()
