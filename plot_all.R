@@ -338,99 +338,82 @@ col7_means_reduced <- col7_means[-c(110, 62, 92, 97,98)]
 
 # calcualte correlation between exon counts and exon skip junction counts
 cor(colMeans(na.omit(col7_exon_reads)), col7_means_reduced, method = "spearman")
+##--------------------------------------------------------------------------------------------##
 
-#percentage
-read_sums <- rev(colSums(na.omit(all_samples_COL7_false_positives)))
-exon_sums <- colSums(na.omit(col7_exon_reads))/100
-
-
-percentages <- c(read_sums[1:60]/exon_sums[1:60]*100,
-read_sums[61:62]/exon_sums[61]*100,
-read_sums[63:90]/exon_sums[62:89]*100,
-read_sums[91:92]/exon_sums[90]*100,
-read_sums[93:95]/exon_sums[91:93]*100,
-read_sums[96:98]/exon_sums[94]*100,
-read_sums[99:108]/exon_sums[95:104]*100,
-read_sums[109:110]/exon_sums[105]*100,
-read_sums[111:118]/exon_sums[106:113]*100)
-
-percentages
-exon_sums
-
-jeroen_exons <- c(15,19,20,33,53,70,71,74,74,76,87,87,87,87,87,87,87,87,87,87,106,107,108,108,111,111,115)
-##------------------------------------------------------------------------------------------##
-
-##-------------------------------------histogram--------------------------------------------##
+##----------------------------------Ordered bar chart-----------------------------------------##
+# order exons by read count from high to low
 ordered_exons <- rev(colMeans(na.omit(all_samples_COL7_1ex))[order(colMeans(na.omit(all_samples_COL7_1ex)))])
 
+# construct ggplot complaint data
 barData <- data.frame(unname(ordered_exons))
 colnames(barData) <- "dat"
-barData$exon <- factor(names(ordered_exons), levels = names(ordered_exons))
-order_bar <- ggplot(data =barData, aes(x=exon, y=dat)) + geom_bar(stat = "identity", position = "dodge")
-order_bar <- order_bar + theme(axis.text.x = element_text(size = 5, angle = 90, vjust = 0.5, hjust = 1))       
-order_bar <- order_bar + labs(x="exon", y="mean normalized read count", title="COL7A1 exons ordered by exon skips")
-order_bar + geom_hline(yintercept = mean(colMeans(na.omit(all_samples_COL7_1ex))), linetype=2, color="red")
+barData$exon <- factor(names(ordered_exons), levels = names(ordered_exons)) # make sure each exon is numbered as they wont be in order
+# create plot
+order_bar <- ggplot(data =barData, aes(x=exon, y=dat)) + geom_bar(stat = "identity", position = "dodge") #add data and type of plot
+order_bar <- order_bar + theme(axis.text.x = element_text(size = 5, angle = 90, vjust = 0.5, hjust = 1)) #Set x-axis text to be small enough to read exon numbers       
+order_bar <- order_bar + labs(x="exon", y="mean normalized read count", title="COL7A1 exons ordered by exon skips") #add labels to plot
+order_bar + geom_hline(yintercept = mean(colMeans(na.omit(all_samples_COL7_1ex))), linetype=2, color="red") #add line with mean skipping for COL7A1
+##--------------------------------------------------------------------------------------------##
 
-
-point_data <- data.frame(col7_exon_lengths)
+##---------------------------------Exon length vs read count----------------------------------##
+#To see effect of exon length on number of junction reads
+point_data <- data.frame(col7_exon_lengths) #collect lengths
 colnames(point_data) <- "exon_lengths"
-point_data$exon <- names(colSums(na.omit(all_samples_COL7_new_scale)))
-point_data$read_count <- unname(colSums(na.omit(all_samples_COL7_new_scale)))
-point_data$frame <- as.factor(ifelse(point_data$exon %in% skippable_exons, "in frame", "out of frame"))
+point_data$exon <- names(colSums(na.omit(all_samples_COL7_new_scale)))#collect exon numbers
+point_data$read_count <- unname(colSums(na.omit(all_samples_COL7_new_scale)))#collect read counts
+point_data$frame <- as.factor(ifelse(point_data$exon %in% skippable_exons, "in frame", "out of frame")) #add in-/out-of-frame data
 
+#create plot to show correlation between exon length and junction count including pval of correlation
 ggplot(point_data, aes(x=exon_lengths, y=read_count, color=frame)) + geom_point() + scale_color_manual(values=c("#5ab4ac", "#d8b365")) + labs(x="exon length", y="scaled read count", title="Number of reads for exon lengths") + annotate("text", x=300, y=max(point_data$read_count), label=paste0("pval: ", round(cor.test(point_data$read_count, point_data$exon_lengths)$p.val, 4)))
   
-
+#calculate correlation between read count and exon length
 cor(point_data$read_count, point_data$exon_lengths)
 ##------------------------------------------------------------------------------------------##
 
-##-------------------------------------average--------------------------------------------##
+##------------------------------Average skipping of EB genes--------------------------------##
 read_multi <- function(fileDir){
+  ## function that reads all .csv files in a directory and concatenates them into 1 dataframe
   # read the files into a list of data.frames
   data.list <- lapply(list.files(path = fileDir, full.names = TRUE), function(x) read.csv(x, row.names = NULL))
   
+  #set colnames to simple numbers to ensure tables can be merged
   for(i in 1:length(data.list)){
     colnames(data.list[[i]]) <- 1:length(colnames(data.list[[i]]))
   }
   
   # concatenate into one big data.frame
   data.cat <- as.data.frame(do.call(rbind, data.list))
-  
-  #all_samples <- subset(data.cat,!duplicated(data.cat$row.names))
-  # row.names(all_samples) <- all_samples$row.names
-  # all_samples$row.names <- c()
-
-  #correct for exon length:
-  #all_samples_n <- all_samples
-  #all_samples_n <- as.data.frame(t(t(all_samples) / exon_lengths))
   return(data.cat)
 }
-all_dir <- list.dirs("/Users/david/Documents/data/cluster_output/eb/")
+all_dir <- list.dirs("/Users/david/Documents/data/cluster_output/eb/") #all EB gene data saved in seperate folders here
 
 eb_data <- list()
+#loop through directories and exclude the starting directory
 for(dir in all_dir){
   if(dir != "/Users/david/Documents/data/cluster_output/eb/"){
-    eb_data[[dir]] <- read_multi(dir)
+    eb_data[[dir]] <- read_multi(dir)#call concatenating function for each directory
   }
   
 }
 
 means <- c()
 mean_per_gene <- c()
+#loops through the list of EB genes
 for(tbl in eb_data){
-  colmns <- colMeans(na.omit(tbl[-1]))
-  colmns[1] <- 0
-  colmns[length(colmns)] <- 0
-  colmns[colmns == Inf] <- 0
-  means <- c(means, colmns)
-  mean_per_gene <- c(mean_per_gene, mean(colmns))
+  colmns <- colMeans(na.omit(tbl[-1])) #calculate columns means. exclude first columns as it contains sample IDs
+  # colmns[1] <- 0
+  # colmns[length(colmns)] <- 0
+  colmns[colmns == Inf] <- 0 #if any infinities are produced during calculations (due to NAs) set value to 0
+  means <- c(means, colmns) #add column means to vector of all means
+  mean_per_gene <- c(mean_per_gene, mean(colmns)) #add mean of all exons of entire mean to vector
 }
-means <- c(means, colMeans(na.omit(all_samples_COL7_1ex)))
-mean_per_gene <- c(mean_per_gene, mean(colMeans(na.omit(all_samples_COL7_1ex))))
-means[means == Inf] <- 0
+means <- c(means, colMeans(na.omit(all_samples_COL7_1ex))) #add means of COL7a1
+mean_per_gene <- c(mean_per_gene, mean(colMeans(na.omit(all_samples_COL7_1ex)))) #same
 
+#create exon skipping plot including a horizontal line showing average skipping of EB genes
 b_all + geom_hline(yintercept = median(means), linetype=2, color="red") + labs(title="Average exon skipping in EB genes")
 
+#create table of all EB genes and their average skipping (for in report)
 eb_table <- data.frame(mean_per_gene)
 eb_table$symbol <- c(unlist(lapply(all_dir[-1], function(x) strsplit(x, "//", fixed = TRUE)[[1]][2])), "COL7A1")
 eb_table$`mean skipped` <- eb_table$mean_per_gene
