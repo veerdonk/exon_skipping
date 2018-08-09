@@ -1,5 +1,4 @@
-# Exon-skipping in EB genes
-## README is a work in progress...
+# Analyzing naturally ocurring exon skipping in COL7A1
 
 ### About the project
 The code for my graduation project "Analyzing naturally ocurring exon skipping in COL7A1" is stored in this repository. During this project I investigated the possibility of using online RNA-seq data repositories like recount2 to find skipped exons in COL7A1. The data I collected was then used to generate predictive data on the ease of artificially skipping exons using AONs.
@@ -41,12 +40,14 @@ Firstly createJobScripts.py has to be used to generate the shell scripts that st
 An example for COL7A1 would look like this: 
 
 `python3 createJobScripts.py COL7A1 ENSG00000114270.16 uc003ctz.3`
+
 NOTE: the Ensembl ID version has to match the ID version stored in recount.
 This script takes one or two seconds to run and produces ~20 shell scripts in a directory named after the gene.
 
 Once these batch files have been produced the jobs can be started by running a shell command like:
 
 `for i in $( ls *.sh ); do sbatch --qos=regular $i; done`
+
 This starts a job for each (~20) .sh file in the current directory with the urgency set to regular. The shell scripts will then call the main exon skipping script (find_other_gene_cmd.R) which in turn will start the analysis. If all data from recount2 has been downloaded prior to the run the total runtime per job should be around 45-60 minutes, this is recommended as you will not be dependant on an internet connection and the servers of recount2. The output will be ~20 .csv files all containing the exons as columns and the read counts of the samples of 100 studies as rows
 
 To download all of the data necessary to analyze exon skipping using recount2 data download_all_studies.R can be used. Inside the script the destination folder has to be changed to your preferred directory. running this script from the commandline will then start downloading all of the studies available on recount2 (2004 at time of writing) along with the .bed file containing junction start and stop locations. Running this script will obviously require some disk space but will also speed up any future runs significantly.
