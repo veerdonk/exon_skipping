@@ -56,15 +56,20 @@ To produce some figures plot_all.R can be used. This script cannot be used from 
 
 ### Descriptions
 createJobScripts.py - Takes some identifiers and produces a number of shell scripts that can be used to start jobs on a slurm cluster.
+
 download_all_studies.R - Downloads all necessary data from recount2 so they will not have to be downloaded each run.
-find_other_gene_cmd.R - The main exon skip finding script. This is called upon by the shell scripts created by createJobScripts.py and produces ~20 .csv output files.
+
+find_other_gene_cmd.R - The main exon skip finding script. This is called upon by the shell scripts created by 
+
+createJobScripts.py and produces ~20 .csv output files.
+
 plot_all.R - Script that takes the output of find_other_gene_cmd.R, parses it and then uses the data to produce a number of insightfull figures.
 
 ### Author
 David van de Veerdonk
 
 ### Acknowledgements
-Peter van den Akker - Instructor UMCG & project assignment
-Freerk van Dijk - Instructor UMCG
-Joeri van der Velde - Instructor UMCG
-Dave Langers - Intsructor Hanze
+* Peter van den Akker - Instructor UMCG & project assignment
+* Freerk van Dijk - Instructor UMCG
+* Joeri van der Velde - Instructor UMCG
+* Dave Langers - Intsructor Hanze
